@@ -1,4 +1,4 @@
-# `order` tactic
+# Decision procedures for order theories
 
 In this post, I describe algorithms that are decision procedures for some theories and discuss their computational complexities. The results can be summarized in the following table:
 
@@ -15,7 +15,7 @@ Adding conditions for the existence of `⊤` or `⊥` elements does not change t
 
 Let me formally state the problem whose complexity is discussed. The input for an algorithm is a set of *atomic facts*, i.e., propositions containing only variables, predicate symbols from the theory (for example `≤`, `<`, and `=` for preorders), and negation. For example, we forbid logical connectives here. The algorithm must derive a contradiction (`False`) from the given set of facts whenever it is possible.
 
-In practice, TODO.
+In practice, the `order` tactic negates the goal, splits conjuctions and tries to find the contradiction as described below.
 
 ## Algorithms' description
 
