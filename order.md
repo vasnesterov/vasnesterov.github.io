@@ -1,6 +1,6 @@
 # `order` tactic
 
-In this post I describe algorithms that are decision procedures for some theories and discuss their computational complexities. The results can be summarized in the following table:
+In this post, I describe algorithms that are decision procedures for some theories and discuss their computational complexities. The results can be summarized in the following table:
 
 | Theory               | Complexity    |
 |----------------------|---------------|
@@ -11,17 +11,17 @@ In this post I describe algorithms that are decision procedures for some theorie
 | Distributive Lattice | coNP-complete |
 | Boolean Algebra      | coNP-complete |
 
-And adding conditions of existance of `⊤` or `⊥` elements does not change the complexity for each theory. The algorithm for the first four theories is similar and now implemented as `order` tactic in Mathlib. The approach for the last two is different and not implemented as a tactic so far.
+Adding conditions for the existence of `⊤` or `⊥` elements does not change the complexity for each theory. The algorithm for the first four theories is similar and now implemented as the `order` tactic in Mathlib. The approach for the last two is different and not implemented as a tactic so far.
 
-Let me formally state the problem which complexity is discussed. The input for an algorithm is set of *atomic facts*, i.e. propositions containing only variables, predicate symbols from the theory (for example `≤`, `<` and `=` for preorders), and negation. For example we forbid logical connectivities here. The algorithm must derive a contradiction (`False`) from the givin set of facts whenever it is possible.
+Let me formally state the problem whose complexity is discussed. The input for an algorithm is a set of *atomic facts*, i.e., propositions containing only variables, predicate symbols from the theory (for example `≤`, `<`, and `=` for preorders), and negation. For example, we forbid logical connectives here. The algorithm must derive a contradiction (`False`) from the given set of facts whenever it is possible.
 
 In practice, TODO.
 
 ## Algorithms' description
 
-Below I describe the algorithms and show why they are decision procedures. The argument for the latter always uses the basic model theory and has form "suppose the algorithm can not find the contradiction, then we show that the given set of facts can be satisfied by some model of the theory, and then is not contradictory".
+Below I describe the algorithms and show why they are decision procedures. The argument for the latter always uses basic model theory and has the form: "suppose the algorithm cannot find the contradiction, then we show that the given set of facts can be satisfied by some model of the theory, and therefore is not contradictory."
 
-As discussed above any atomic fact can have one of the following 6 forms:
+As discussed above, any atomic fact can have one of the following 6 forms:
 * `x = y`
 * `x ≠ y`
 * `x < y`
@@ -29,7 +29,7 @@ As discussed above any atomic fact can have one of the following 6 forms:
 * `x ≤ y`
 * `¬(x ≤ y)`
 
-for some terms `x` and `y`. In preorders, partial orders, and linear orders terms can only be variables. In lattices, they can also contain `⊔` and `⊓` operations. And in Boolean algebras there are also completion and implication operations.
+for some terms `x` and `y`. In preorders, partial orders, and linear orders, terms can only be variables. In lattices, they can also contain `⊔` and `⊓` operations. And in Boolean algebras, there are also complement and implication operations.
 
 ### Preorder
 #### Algorithm description
@@ -39,11 +39,11 @@ We replace some facts as follows:
 * Replace `x = y` with `x ≤ y` and `y ≤ x`.
 * Remove `x ≠ y`.
 2. **Building the `≤`-graph**.
-We construct a graph where vertices correspond to atoms (i.e. atomic terms), and an edge `(x, y)` exists if the fact
+We construct a graph where vertices correspond to atoms (i.e., atomic terms), and an edge `(x, y)` exists if the fact
 `x ≤ y` is present in our set of facts. We call this graph a `≤`-graph. The main property of this graph is that if `x` is reachable from `y` in the graph, then one can derive `y ≤ x`.
 3. **Growing the `≤`-graph with `≮`-facts**.
 In preorders, `¬(x < y)` is equivalent to `(x ≤ y) → (y ≤ x)`. Thus, if `y` is reachable from `x`
-in the `≤`-graph, we can derive the new fact `y ≤ x`. At this step, we add such edges to the graph while possible. To check reachability we use simple DFS algorithm. If some `≮`-facts is used it can not be used in the future, so the number of iterations of the `while`-loop is bounded by the size of the of facts.
+in the `≤`-graph, we can derive the new fact `y ≤ x`. At this step, we add such edges to the graph while possible. To check reachability, we use a simple DFS algorithm. If some `≮`-fact is used, it cannot be used in the future, so the number of iterations of the `while`-loop is bounded by the size of the set of facts.
 4. **Finding contradictions using `≰`-facts**.
 For each fact `¬(x ≤ y)`, we check if `y` is reachable from `x` in the `≤`-graph using DFS. If so, we derive the desired contradiction.
 
@@ -90,7 +90,7 @@ We replace some facts as follows:
 2. **Building the `≤`-graph**: Same as for preorders.
 3. **Growing the `≤`-graph with `≮`-facts**: Same as for preorders.
 4. **Finding contradictions using `≠`-facts**.
-We identify strongly connected components in the `≤`-graph using the Tarjan's algorithm. For each
+We identify strongly connected components in the `≤`-graph using Tarjan's algorithm. For each
 fact `x ≠ y`, we check whether `x` and `y` belong to the same component. If they do, then `x = y` is provable, contradicting `x ≠ y`.
 
 #### Why is this a decision procedure?
@@ -116,7 +116,7 @@ We replace some facts as follows:
 3. **Finding contradictions using `≠`-facts**: Same as for partial orders.
 
 Note that the algorithm for linear orders is simply the algorithm for partial orders with an
-additional preprocessing step. It also skips the growing step because there is no `≮`-facts.
+additional preprocessing step. It also skips the growing step because there are no `≮`-facts.
 
 #### Why is this a decision procedure?
 We need to slightly modify the proof for partial orders. In this case, `T` and `T'` are again
@@ -129,13 +129,13 @@ linear order where `C₁ R C₂` whenever `C₂` is reachable from `C₁`. It is
 in `T'` are satisfied by the model.
 
 ### Lattice
-In this case there are new types of atomic facts, namely
+In this case, there are new types of atomic facts, namely:
 * `x ⊔ y = z`
 * `x ⊓ y = z`
 
 where `x`, `y`, and `z` are variables.
 The algorithm for lattices is similar to that for partial orders, with two differences:
-1. During the preprocessing step, for each fact `x ⊔ y = z` we add the facts `x ≤ z` and `y ≤ z`, and similarly for `⊓`.
+1. During the preprocessing step, for each fact `x ⊔ y = z`, we add the facts `x ≤ z` and `y ≤ z`, and similarly for `⊓`.
 2. In step 5, we, in addition to the above, expand the `≤`-graph using the following procedure: if a vertex `v` is reachable
 from both `x` and `y`, and `x ⊔ y = z` is present in the set of facts, we add the edge `(z, v)`
 using `sup_le`, and similarly for `⊓`.
@@ -143,74 +143,73 @@ using `sup_le`, and similarly for `⊓`.
 
 #### Why is this a decision procedure?
 Again, suppose that the algorithm does not find a contradiction from some set `T`, and construct the lattice that satisfies `T`. Consider the constructed `≤`-graph `G`.
-Let us denote `Sup(x, y, z)` the predicate on vertices of some graph stating that the
+Let us denote `Sup(x, y, z)` as the predicate on vertices of some graph stating that the
 vertex `z` is reachable from both `x` and `y`, and
-for any vertex `v` reachable from both `x` and `y` there is a path from `z` to `v`.
+for any vertex `v` reachable from both `x` and `y`, there is a path from `z` to `v`.
 Also denote `HasSup(x, y) = ∃ z, Sup(x, y, z)`, and define `Inf(x, y, z)` and `HasInf(x, y)`
-symmertically. Note that is there is a fact `x ⊔ y = z` in `T'`, then `Sup(x, y, z)` is true for the
+symmetrically. Note that if there is a fact `x ⊔ y = z` in `T'`, then `Sup(x, y, z)` is true for the
 graph `G`.
 
 We construct a new graph `H` from `G` as follows.
-For all pairs `x`, `y` of variables from `T'` if there is no
+For all pairs `x`, `y` of variables from `T'`, if there is no
 fact `x ⊔ y = z` for some `z` in `T'`, we add a new vertex `z` in the graph with
-edges `(x, z)`, `(y, z)` and `(z, v)` for all `v` that is reachable from both `x` and `y` in `G`,
+edges `(x, z)`, `(y, z)`, and `(z, v)` for all `v` that is reachable from both `x` and `y` in `G`,
 and symmetrically for `⊓`.
 
-The graph `H` has the following property: for any two variables `x` and `y` from `T'` there is a
+The graph `H` has the following property: for any two variables `x` and `y` from `T'`, there is a
 vertex `z` such that `z` is reachable from both `x` and `y`, and for any vertex `v` reachable from
-both `x` and `y` there is a path from `z` to `v`. In such case we call the vertex `z` as `x ⊔ᵣ y`.
+both `x` and `y`, there is a path from `z` to `v`. In such a case, we call the vertex `z` as `x ⊔ᵣ y`.
 The operation `⊓ᵣ` is defined symmetrically.
 
 Let `G₀ = G`. We construct the sequence `Gₖ` of graphs recursively as follows. `Gₖ₊₁` extends `Gₖ`
 using the following procedure.
-For all pairs `x`, `y` of vertices from `Gₖ` if `HasSup(x, y)` does not hold we add a new vertex
+For all pairs `x`, `y` of vertices from `Gₖ`, if `HasSup(x, y)` does not hold, we add a new vertex
 `z` to the graph with
-edges `(x, z)`, `(y, z)` and `(z, v)` for all `v` that is reachable from both `x` and `y` in `Gₖ`.
-Symmetrically, we add new vertices by checking the `HasInf` predicates. Note that reachabily
-relation on `Gₖ` is preserved: for any two vertices `x`, `y` from `Gₖ₊₁` there is a path from `x` to
-`y` iff there is such path in `Gₖ`.
+edges `(x, z)`, `(y, z)`, and `(z, v)` for all `v` that is reachable from both `x` and `y` in `Gₖ`.
+Symmetrically, we add new vertices by checking the `HasInf` predicates. Note that the reachability
+relation on `Gₖ` is preserved: for any two vertices `x`, `y` from `Gₖ₊₁`, there is a path from `x` to
+`y` iff there is such a path in `Gₖ`.
 
-Finally, let's denote `G'` the union of all `Gₖ`. The carrier of our model is then the set of
+Finally, let's denote `G'` as the union of all `Gₖ`. The carrier of our model is then the set of
 strongly connected components in `G'`, and the relation `R` is defined as `C₁ R C₂` iff `C₂` is
-reachable from `C₁`. For any two vertices `x` and `y` in `G'` we define
+reachable from `C₁`. For any two vertices `x` and `y` in `G'`, we define
 `[x] ⊔ [y]` as `[z]` for some `z` for which `Sup(x, y, z)` holds, and similarly for `⊓`. One can
 easily check that the definition is correct, and all facts from `T'` are satisfied.
 
 ### Boolean algebra
-For boolean algebras there 4 new types of facts, namely:
+For Boolean algebras, there are 4 new types of facts, namely:
 * `x = ⊤`
 * `x = ⊥`
 * `x = yᶜ`
 * `x = y ⇨ z`
 
 for some variables `x`, `y`, and `z`.
-It is well known that checking if `φ=1` is provable in the theory of Boolean algebras for some term `φ` is equivalent to checking if (the natural translation of) `φ` is classical tautology. This means that the decision problem from this theory is **coNP**-complete. One could implement a simple tactic for this using the following pipeline:
-1. Use Stone's representation theorem to tranlsate all facts from arbitrary Boolean algebra `α` to Boolean algebra `Set β` for some `β`.
-2. Finish the goal using `set_tauto` tactic.
+It is well known that checking if `φ=1` is provable in the theory of Boolean algebras for some term `φ` is equivalent to checking if (the natural translation of) `φ` is a classical tautology. This means that the decision problem from this theory is **coNP**-complete. One could implement a simple tactic for this using the following pipeline:
+1. Use Stone's representation theorem to translate all facts from an arbitrary Boolean algebra `α` to Boolean algebra `Set β` for some `β`.
+2. Finish the goal using the `set_tauto` tactic.
 
 ### Distributive lattice
-The tactic for solving goals in this theory is the same discribed above, with only change that one needs Stone's representation theorem for distributive lattices.
+The tactic for solving goals in this theory is the same as described above, with only the change that one needs Stone's representation theorem for distributive lattices.
 
-Let me show, that this decision problem is also **coNP**-complete by reducing the previous one to this.
+Let me show that this decision problem is also **coNP**-complete by reducing the previous one to this.
 
-Let `T` be some set of facts in Boolean algebras theory. We construct the set `T'` of facts in the theory of distributive lattices by `T` as follows:
-* Add two fresh variables `b` and `t`, and replace all facts `x = ⊤` with `x = t` and all facts `x = ⊥` with `x = b`. Also add facts `x ≤ t` and `b ≤ x`, for all variables `x`.
+Let `T` be some set of facts in Boolean algebras theory. We construct the set `T'` of facts in the theory of distributive lattices from `T` as follows:
+* Add two fresh variables `b` and `t`, and replace all facts `x = ⊤` with `x = t` and all facts `x = ⊥` with `x = b`. Also add facts `x ≤ t` and `b ≤ x` for all variables `x`.
 * Replace facts `x = yᶜ` with `x ⊔ y = t` and `x ⊓ y = b`.
-* For facts `x = y ⇨ z` introduce new variable `u` and add three facts: `x = u ⊔ z`, `u ⊓ y = b`, `u ⊔ y = t` (here `u` has meaning `yᶜ`).
-* Other facts leave without changes.
+* For facts `x = y ⇨ z`, introduce a new variable `u` and add three facts: `x = u ⊔ z`, `u ⊓ y = b`, `u ⊔ y = t` (here `u` has the meaning `yᶜ`).
+* Leave other facts unchanged.
 
-Suppose, that `T` is satisfiable in the theory of Boolean algebra, i.e. there is a Boolean algebra `M` that satisfies `T`. Then the same algebra (viewed as distributive lattice) satisfies `T'` if we interpret `t` ans `b` as `⊤` and `⊥`, and `u` as `yᶜ` for each replacement for facts of the form `x = y ⇨ z` described above.
+Suppose that `T` is satisfiable in the theory of Boolean algebra, i.e., there is a Boolean algebra `M` that satisfies `T`. Then the same algebra (viewed as a distributive lattice) satisfies `T'` if we interpret `t` and `b` as `⊤` and `⊥`, and `u` as `yᶜ` for each replacement for facts of the form `x = y ⇨ z` described above.
 
-Suppose now that `T'` is satisfiable in the theory of distributive lattices, i.e. there is a distributive lattice `M` that satisfies `T'`. Let `N` be a sublattice of `M` generated by values of variables from `T'`. It is easy to see that `t` and `b` are greatest and lowest elements in `N`. `N`, as any bounded distributive lattice, can be embedded into some Boolean algebra `B` (as a sublattice). Then `B` is a model of `T`:
+Suppose now that `T'` is satisfiable in the theory of distributive lattices, i.e., there is a distributive lattice `M` that satisfies `T'`. Let `N` be a sublattice of `M` generated by values of variables from `T'`. It is easy to see that `t` and `b` are the greatest and lowest elements in `N`. `N`, as any bounded distributive lattice, can be embedded into some Boolean algebra `B` (as a sublattice). Then `B` is a model of `T`:
 * Each fact `x = ⊤` is satisfied because `N(x) = N(t) = ⊤` and then `B(x) = ⊤`. Similarly for `⊥`.
-* Each fact `x = yᶜ` is satisfied because `N(x) ⊔ N(y) = ⊤` and `N(x) ⊓ N(y) = ⊥` (as `N` is a model of `T'`), and similar equalities true for `B` as the embedding preserves lattice operations, least and greatest elements. This two equalities imply `B(x) = B(y)ᶜ` in Boolean algebras.
-* Each fact `x = y ⇨ z`  is equivalent to `x = yᶜ ⊔ z` or `x = u ⊔ z`, `u = yᶜ`.
-From the previous we know that `B(u) = B(y)ᶜ`, and from properties of embedding we obtain `B(x) = B(y)ᶜ ⊔ B(z)`, as required.
+* Each fact `x = yᶜ` is satisfied because `N(x) ⊔ N(y) = ⊤` and `N(x) ⊓ N(y) = ⊥` (as `N` is a model of `T'`), and similar equalities are true for `B` as the embedding preserves lattice operations, least and greatest elements. These two equalities imply `B(x) = B(y)ᶜ` in Boolean algebras.
+* Each fact `x = y ⇨ z` is equivalent to `x = yᶜ ⊔ z` or `x = u ⊔ z`, `u = yᶜ`.
+From the previous we know that `B(u) = B(y)ᶜ`, and from properties of embedding, we obtain `B(x) = B(y)ᶜ ⊔ B(z)`, as required.
 * All other facts from `T` are in `T'` too, so they are satisfied in `N`, and then in `B`.
 
-This show that the decision problem for Boolean algebras can be reduced to the decision problem for distribuitve lattices, implying that latter is **coNP**-complete.
-
+This shows that the decision problem for Boolean algebras can be reduced to the decision problem for distributive lattices, implying that the latter is **coNP**-complete.
 
 ### `⊤` and `⊥`
-If the existance of `⊤` and `⊥` is added to the theory, we add the edges `(x, ⊤)` and `(⊥, x)` for all vertices `x`, using `le_top`
-and `bot_le`, respectively. One can easily check that it preserves complexity and completeness of all algorithms.
+If the existence of `⊤` and `⊥` is added to the theory, we add the edges `(x, ⊤)` and `(⊥, x)` for all vertices `x`, using `le_top`
+and `bot_le`, respectively. One can easily check that it preserves the complexity and completeness of all algorithms.
