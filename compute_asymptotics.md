@@ -6,8 +6,7 @@ If you have any questions or remarks, feel free to contact me on Zulip or open a
 
 ## High-level idea of the tactic
 
-The purpose of the tactic is to prove asymptotic goals about numerical functions, in particular
-limits at infinity. For example:
+The purpose of the tactic is to prove asymptotic goals about numerical functions. For example:
 
 ```lean
 import Mathlib.Tactic.ComputeAsymptotics.Main
