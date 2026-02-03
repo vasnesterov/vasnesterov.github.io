@@ -2,7 +2,7 @@
 
 This is a reference for the compute_asymptotics tactic implementation. I wrote it for reviewers to give full context on what's going on here. 
 You can find the complete code [here](https://github.com/leanprover-community/mathlib4/pull/28291). 
-If you have any questions or remarks, feel free to contact me on Zulip or open a PR or issue at https://github.com/vasnesterov/vasnesterov.github.io/.
+If you have any questions or remarks, feel free to contact me on Zulip or open a PR or issue at [this repo](https://github.com/vasnesterov/vasnesterov.github.io/).
 
 ## High-level idea of the tactic
 
