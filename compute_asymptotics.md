@@ -429,7 +429,7 @@ We then prove
         motive (.cons exp coef tl) → coef.Sorted ∧ tl.leadingExp < ↑exp ∧
         ∃ A B, tl = A + B ∧ A.Sorted ∧ motive B) :
     ms.Sorted
-  ```lean
+  ```
   (cf. `Sorted.coind`)
 7. A coinduction principle for `Approximates`:
   ```lean
@@ -446,7 +446,7 @@ We then prove
           tl = A.seq + B ∧ A.Approximates ∧
           motive (mk (basis_hd := basis_hd) B (ms.toFun - basis_hd ^ exp * coef.toFun - A.toFun))) :
     ms.Approximates
-  ```lean
+  ```
   (cf. `Approximates.coind`)
 
 ## Multiplication of multiseries
