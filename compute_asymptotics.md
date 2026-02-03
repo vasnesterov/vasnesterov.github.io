@@ -431,6 +431,7 @@ We then prove
     ms.Sorted
   ```
   (cf. `Sorted.coind`)
+
 7. A coinduction principle for `Approximates`:
   ```lean
   theorem Approximates.add_coind {basis_hd : ℝ → ℝ} {basis_tl : Basis}
