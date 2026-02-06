@@ -60,7 +60,7 @@ To compute the limit of a function `f` (given as an `Expr`):
 
 # Theory of multiseries
 
-## Definition of multiseries (`PreMS` and `SeqMS`)
+## Definition of multiseries (`MultiseriesExpansion` and `Multiseries`)
 
 First of all, we need to define a *basis*. A basis is just a list of real functions.
 ```lean
@@ -73,10 +73,10 @@ from monomials `b₁ ^ e₁ * ... * bₙ ^ eₙ` where `e₁, ..., eₙ` are rea
 The initial definition of multiseries in Lean was the following:
 
 ```lean
-def PreMS (basis : Basis) : Type :=
+def MultiseriesExpansion (basis : Basis) : Type :=
   match basis with
   | [] => ℝ
-  | basis_hd :: basis_tl => Seq (ℝ × PreMS basis_tl) × (ℝ → ℝ)
+  | basis_hd :: basis_tl => Seq (ℝ × MultiseriesExpansion basis_tl) × (ℝ → ℝ)
 ```
 
 We treat multivariate series in the basis `[b₁, ..., bₙ]` as a univariate series in the
@@ -91,55 +91,55 @@ For example, the series `7 b₁² b₂⁴ + 5 b₁² b₂³ + 6 b₁` is represe
 But it turns out we need to explicitly store a function attached to the multiseries (the function
 it approximates). See [trimming] for more details.
 
-So we use two types, `PreMS` and `SeqMS`, which we would like to define like this:
+So we use two types, `MultiseriesExpansion` and `Multiseries`, which we would like to define like this:
 
 ```lean
 mutual
 
-def SeqMS (basis_hd : ℝ → ℝ) (basis_tl : Basis) : Type := Seq (ℝ × PreMS basis_tl)
+def Multiseries (basis_hd : ℝ → ℝ) (basis_tl : Basis) : Type := Seq (ℝ × MultiseriesExpansion basis_tl)
 
-def PreMS (basis : Basis) : Type :=
+def MultiseriesExpansion (basis : Basis) : Type :=
   match basis with
   | [] => ℝ
-  | basis_hd :: basis_tl => (SeqMS basis_hd basis_tl) × (ℝ → ℝ)
+  | basis_hd :: basis_tl => (Multiseries basis_hd basis_tl) × (ℝ → ℝ)
 
 end
 ```
 
-Using `mutual` to define types breaks some def-eqs, but luckily we can define `PreMS` and `SeqMS`
-separately. Having both types is more convenient than having only `PreMS`, for two reasons:
+Using `mutual` to define types breaks some def-eqs, but luckily we can define `MultiseriesExpansion` and `Multiseries`
+separately. Having both types is more convenient than having only `MultiseriesExpansion`, for two reasons:
 * Most constructions (`Sorted`, `Trimmed`, `leadingExp`, etc.) don't refer to the function attached to the multiseries,
-  so it's easier to state them for `SeqMS`.
-* We can use the `Seq` API directly for `SeqMS`, but not for `PreMS`.
+  so it's easier to state them for `Multiseries`.
+* We can use the `Seq` API directly for `Multiseries`, but not for `MultiseriesExpansion`.
 
-We call `nil` and `cons exp coef tl` the normal forms for `SeqMS`. For `PreMS` we
-call `mk s f` the normal form, where `s` is a `SeqMS` and `f` is the real function.
+We call `nil` and `cons exp coef tl` the normal forms for `Multiseries`. For `MultiseriesExpansion` we
+call `mk s f` the normal form, where `s` is a `Multiseries` and `f` is the real function.
 An important step of the algorithm is *normalization*: we simulate lazy evaluations of multiseries
 until we reach the normal form.
 
 ## `Sorted` predicate
 
-`Sorted (ms : PreMS basis)` means that at each level of `ms` the exponents in the list are **strictly
-decreasing**. This is defined as follows. First we define `PreMS.leadingExp` - the first exponent at `basis_hd`.
+`Sorted (ms : MultiseriesExpansion basis)` means that at each level of `ms` the exponents in the list are **strictly
+decreasing**. This is defined as follows. First we define `MultiseriesExpansion.leadingExp` - the first exponent at `basis_hd`.
 ```lean
-def SeqMS.leadingExp (s : SeqMS basis_hd basis_tl) : WithBot ℝ :=
+def Multiseries.leadingExp (s : Multiseries basis_hd basis_tl) : WithBot ℝ :=
   match s.head with
   | none => ⊥
   | some (exp, _) => exp
 
-def PreMS.leadingExp (ms : PreMS (basis_hd :: basis_tl)) : WithBot ℝ :=
+def MultiseriesExpansion.leadingExp (ms : MultiseriesExpansion (basis_hd :: basis_tl)) : WithBot ℝ :=
   ms.seq.leadingExp
 ```
 
-Then we define `Sorted` as a predicate on `PreMS` and `SeqMS`:
+Then we define `Sorted` as a predicate on `MultiseriesExpansion` and `Multiseries`:
 ```lean
 /-- Auxiliary instance for order on pairs `(exp, coef)` used below to define `Sorted` in terms
 of `Seq.Pairwise`. `(exp₁, coef₁) ≤ (exp₂, coef₂)` iff `exp₁ ≤ exp₂`. -/
-scoped instance {basis} : Preorder (ℝ × PreMS basis) := Preorder.lift Prod.fst
+scoped instance {basis} : Preorder (ℝ × MultiseriesExpansion basis) := Preorder.lift Prod.fst
 
-inductive Sorted : {basis : Basis} → (PreMS basis) → Prop
-| const (ms : PreMS []) : Sorted ms
-| seq {hd} {tl} (ms : PreMS (hd :: tl))
+inductive Sorted : {basis : Basis} → (MultiseriesExpansion basis) → Prop
+| const (ms : MultiseriesExpansion []) : Sorted ms
+| seq {hd} {tl} (ms : MultiseriesExpansion (hd :: tl))
     (h_coef : ∀ x ∈ ms.seq, x.2.Sorted)
     (h_Pairwise : Seq.Pairwise (· > ·) ms.seq) : ms.Sorted
 ```
@@ -148,22 +148,22 @@ Sortedness ensures that the first non-zero monomial is the dominant one, if the 
 is well-formed (see `WellFormedBasis`).
 
 This definition doesn't refer to the function attached to the multiseries, so we mainly work with
-a `SeqMS`-version of `Sorted`:
+a `Multiseries`-version of `Sorted`:
 ```lean
-def SeqMS.Sorted {basis_hd basis_tl} (s : SeqMS basis_hd basis_tl) : Prop :=
+def Multiseries.Sorted {basis_hd basis_tl} (s : Multiseries basis_hd basis_tl) : Prop :=
   (mk s 0).Sorted (basis := basis_hd :: basis_tl)
 ```
 and prove
 ```lean
-theorem Sorted_iff_Seq_Sorted {ms : PreMS (basis_hd :: basis_tl)} :
-    ms.Sorted ↔ SeqMS.Sorted ms.seq
+theorem Sorted_iff_Seq_Sorted {ms : MultiseriesExpansion (basis_hd :: basis_tl)} :
+    ms.Sorted ↔ Multiseries.Sorted ms.seq
 ```
-to reduce `PreMS.Sorted` to `SeqMS.Sorted`.
+to reduce `MultiseriesExpansion.Sorted` to `Multiseries.Sorted`.
 
 In addition to constructors (`const`, `nil`, `cons`) and destructors we prove a coinduction principle:
 ```lean
-theorem Sorted.coind {s : SeqMS basis_hd basis_tl}
-    (motive : (ms : SeqMS basis_hd basis_tl) → Prop)
+theorem Sorted.coind {s : Multiseries basis_hd basis_tl}
+    (motive : (ms : Multiseries basis_hd basis_tl) → Prop)
     (h_base : motive s)
     (h_step : ∀ exp coef tl, motive (.cons exp coef tl) →
         coef.Sorted ∧
@@ -189,12 +189,12 @@ Let's define what it means for a multiseries to approximate a function.
 
 A "true" definition of `Approximates` would be as a coinductive predicate:
 ```lean
-coinductive Approximates {basis : Basis} (ms : PreMS basis) : Prop
-| const (ms : PreMS []) : Approximates ms
+coinductive Approximates {basis : Basis} (ms : MultiseriesExpansion basis) : Prop
+| const (ms : MultiseriesExpansion []) : Approximates ms
 | nil {basis_hd : ℝ → ℝ} {basis_tl : Basis} (f : ℝ → ℝ) (hf : f =ᶠ[atTop] 0) :
   Approximates (mk (@nil basis_hd basis_tl) f)
-| cons {basis_hd : ℝ → ℝ} {basis_tl : Basis} {exp : ℝ} {coef : PreMS basis_tl}
-    {tl : SeqMS basis_hd basis_tl}
+| cons {basis_hd : ℝ → ℝ} {basis_tl : Basis} {exp : ℝ} {coef : MultiseriesExpansion basis_tl}
+    {tl : Multiseries basis_hd basis_tl}
     (h_coef : coef.Approximates) (h_maj : Majorated f basis_hd exp)
     (h_tl : (mk tl (f - basis_hd ^ exp * coef.toFun)).Approximates) :
   Approximates (mk (.cons exp coef tl) f)
@@ -229,15 +229,15 @@ A multiseries is **Trimmed** if it's either nil, or its leading monomial is non-
 
 Formally, it is defined as follows:
 ```lean
-inductive IsZero : {basis : Basis} → PreMS basis → Prop
-| const {c : PreMS []} (hc : c.toReal = 0) : IsZero c
+inductive IsZero : {basis : Basis} → MultiseriesExpansion basis → Prop
+| const {c : MultiseriesExpansion []} (hc : c.toReal = 0) : IsZero c
 | nil {basis_hd} {basis_tl} (f) : @IsZero (basis_hd :: basis_tl) (mk .nil f)
 
-inductive Trimmed : {basis : Basis} → PreMS basis → Prop
+inductive Trimmed : {basis : Basis} → MultiseriesExpansion basis → Prop
 | const {c : ℝ} : @Trimmed [] c
 | nil {basis_hd} {basis_tl} {f} : @Trimmed (basis_hd :: basis_tl) (mk .nil f)
-| cons {basis_hd} {basis_tl} {exp : ℝ} {coef : PreMS basis_tl}
-  {tl : SeqMS basis_hd basis_tl} {f : ℝ → ℝ} (h_trimmed : coef.Trimmed)
+| cons {basis_hd} {basis_tl} {exp : ℝ} {coef : MultiseriesExpansion basis_tl}
+  {tl : Multiseries basis_hd basis_tl} {f : ℝ → ℝ} (h_trimmed : coef.Trimmed)
   (h_ne_zero : ¬ IsZero coef) :
   @Trimmed (basis_hd :: basis_tl) (mk (.cons exp coef tl) f)
 ```
@@ -284,7 +284,7 @@ to get the limit.
 ## Leading term of a multiseries
 
 To compute the asymptotic of a multiseries, we find its leading term.
-`leadingTerm ms` for `ms : PreMS basis` is the `Term` at the "front" of the expansion: the list
+`leadingTerm ms` for `ms : MultiseriesExpansion basis` is the `Term` at the "front" of the expansion: the list
 of leading exponents at each level (`ms.exps`) and the real coefficient at the end (`ms.realCoef`).
 
 We prove `IsEquivalent_leadingTerm`: `ms.toFun ~[atTop] ms.leadingTerm.toFun basis` which means that
@@ -293,7 +293,7 @@ latter as described above.
 The `log` and `exp` operations also require some preconditions on the leading term.
 
 
-## Corecursion for `SeqMS`
+## Corecursion for `Multiseries`
 
 Operations on multiseries are defined by corecursion. As well as recursion, corecursion
 justifies some self-referential definitions. It may be primitive or non-primitive.
@@ -323,9 +323,9 @@ def (f : β → Option (α × β)) (b : β) : Seq α
 So instead of `⟨hd, newArg⟩ : β → (α × β)` we now have `f : β → Option (α × β)` and
 `none` means empty list.
 
-This is directly translated for `SeqMS`:
+This is directly translated for `Multiseries`:
 ```lean
-def SeqMS.corec (f : β → Option (ℝ × PreMS basis_tl × β)) (b : β) : SeqMS basis_hd basis_tl
+def Multiseries.corec (f : β → Option (ℝ × MultiseriesExpansion basis_tl × β)) (b : β) : Multiseries basis_hd basis_tl
 ```
 
 Using primitive corecursion we define negation and addition of multiseries. But it's not enough
@@ -355,31 +355,31 @@ we later use to prove that addition and multiplication are friendly operations.
 
 The first operations we define are multiplication by a constant and negation:
 ```lean
-def mulConst {basis : Basis} (c : ℝ) (ms : PreMS basis) : PreMS basis :=
+def mulConst {basis : Basis} (c : ℝ) (ms : MultiseriesExpansion basis) : MultiseriesExpansion basis :=
   match basis with
   | [] => ofReal (c * ms.toReal)
   | List.cons _ _ =>
     mk (ms.seq.map id (fun coef => coef.mulConst c)) (c • ms.toFun)
 
-def neg {basis : Basis} (ms : PreMS basis) : PreMS basis :=
+def neg {basis : Basis} (ms : MultiseriesExpansion basis) : MultiseriesExpansion basis :=
   ms.mulConst (-1)
 ```
-This is easy to define via `SeqMS.map`.
+This is easy to define via `Multiseries.map`.
 
-As with other operations, we provide `SeqMS`-versions:
+As with other operations, we provide `Multiseries`-versions:
 ```lean
-def SeqMS.mulConst {basis_hd basis_tl} (c : ℝ) (ms : SeqMS basis_hd basis_tl) :
-    SeqMS basis_hd basis_tl :=
+def Multiseries.mulConst {basis_hd basis_tl} (c : ℝ) (ms : Multiseries basis_hd basis_tl) :
+    Multiseries basis_hd basis_tl :=
   ms.map id (fun coef => coef.mulConst c)
 
-def SeqMS.neg {basis_hd basis_tl} (ms : SeqMS basis_hd basis_tl) : SeqMS basis_hd basis_tl :=
+def Multiseries.neg {basis_hd basis_tl} (ms : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
   ms.mulConst (-1)
 ```
 
 Then we prove
-1. "Structural" lemmas for `SeqMS`-versions.
-2. `SeqMS.mulConst_Sorted`: `SeqMS.mulConst` respects sortedness
-3. `PreMS.mulConst_Approximates`: `ms.mulConst c` approximates the function attached to it
+1. "Structural" lemmas for `Multiseries`-versions.
+2. `Multiseries.mulConst_Sorted`: `Multiseries.mulConst` respects sortedness
+3. `MultiseriesExpansion.mulConst_Approximates`: `ms.mulConst c` approximates the function attached to it
   (`c • ms.toFun`)
 
 ## Addition of multiseries
@@ -388,12 +388,12 @@ The next operation we define is addition. A "true" definition would be corecursi
 ```lean
 mutual
 
-def PreMS.add (X Y : PreMS basis) : PreMS basis :=
+def MultiseriesExpansion.add (X Y : MultiseriesExpansion basis) : MultiseriesExpansion basis :=
   match basis with
   | [] => ofReal (X.toReal + Y.toReal)
-  | basis_hd :: basis_tl => mk (SeqMS.add X.seq Y.seq) (X.toFun + Y.toFun)
+  | basis_hd :: basis_tl => mk (Multiseries.add X.seq Y.seq) (X.toFun + Y.toFun)
 
-def SeqMS.add (X Y : SeqMS basis_hd basis_tl) : SeqMS basis_hd basis_tl :=
+def Multiseries.add (X Y : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
   match X, Y with
   | nil, _ => Y
   | _, nil => X
@@ -409,23 +409,23 @@ end
 ```
 
 Lean doesn't support corecursive definitions, so we need to manually rewrite the definition using
-the corecursion combinator `SeqMS.corec`, and then prove the above equation as a theorem: `SeqMS.add_unfold`.
+the corecursion combinator `Multiseries.corec`, and then prove the above equation as a theorem: `Multiseries.add_unfold`.
 
 We then prove
-1. "Structural" lemmas for `SeqMS.add`
+1. "Structural" lemmas for `Multiseries.add`
 2. Algebraic properties: multiseries form an `AddCommMonoid`. That allows us to use `abel` tactic in our proofs.
-3. `SeqMS.add_Sorted`: `SeqMS.add` respects sortedness
-4. `PreMS.add_Approximates`: `ms.add X Y` approximates the function attached to it
+3. `Multiseries.add_Sorted`: `Multiseries.add` respects sortedness
+4. `MultiseriesExpansion.add_Approximates`: `ms.add X Y` approximates the function attached to it
   (`X.toFun + Y.toFun`)
-5. That `X + ·` (with constant `X`) is a friend operation for `SeqMS`. That allows us to define `SeqMS.mul` using
+5. That `X + ·` (with constant `X`) is a friend operation for `Multiseries`. That allows us to define `Multiseries.mul` using
   non-primitive corecursion.
 6. A coinduction principle for `Sorted`:
   ```lean
-  theorem SeqMS.Sorted.add_coind {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-    {ms : SeqMS basis_hd basis_tl}
-    (motive : SeqMS basis_hd basis_tl → Prop) (h_base : motive ms)
+  theorem Multiseries.Sorted.add_coind {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+    {ms : Multiseries basis_hd basis_tl}
+    (motive : Multiseries basis_hd basis_tl → Prop) (h_base : motive ms)
     (h_step :
-      ∀ (exp : ℝ) (coef : PreMS basis_tl) (tl : SeqMS basis_hd basis_tl),
+      ∀ (exp : ℝ) (coef : MultiseriesExpansion basis_tl) (tl : Multiseries basis_hd basis_tl),
         motive (.cons exp coef tl) → coef.Sorted ∧ tl.leadingExp < ↑exp ∧
         ∃ A B, tl = A + B ∧ A.Sorted ∧ motive B) :
     ms.Sorted
@@ -435,15 +435,15 @@ We then prove
 7. A coinduction principle for `Approximates`:
   ```lean
   theorem Approximates.add_coind {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-    {ms : PreMS (basis_hd :: basis_tl)}
-    (motive : PreMS (basis_hd :: basis_tl) → Prop) (h_base : motive ms)
+    {ms : MultiseriesExpansion (basis_hd :: basis_tl)}
+    (motive : MultiseriesExpansion (basis_hd :: basis_tl) → Prop) (h_base : motive ms)
     (h_step :
-      ∀ (ms : PreMS (basis_hd :: basis_tl)),
+      ∀ (ms : MultiseriesExpansion (basis_hd :: basis_tl)),
         motive ms →
         ms.seq = .nil ∧ ms.toFun =ᶠ[atTop] 0 ∨
         ∃ exp coef tl,
           ms.seq = .cons exp coef tl ∧ coef.Approximates ∧ majorated ms.toFun basis_hd exp ∧
-          ∃ (A : PreMS (basis_hd :: basis_tl)) (B : SeqMS basis_hd basis_tl),
+          ∃ (A : MultiseriesExpansion (basis_hd :: basis_tl)) (B : Multiseries basis_hd basis_tl),
           tl = A.seq + B ∧ A.Approximates ∧
           motive (mk (basis_hd := basis_hd) B (ms.toFun - basis_hd ^ exp * coef.toFun - A.toFun))) :
     ms.Approximates
@@ -456,64 +456,64 @@ Multiplication is defined by mutual recursion with "multiplication by a monomial
 ```lean
 mutual
 
-  /-- `SeqMS`-part of `PreMS.mul`. -/
-  noncomputable def SeqMS.mul {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-      (X Y : SeqMS basis_hd basis_tl) : SeqMS basis_hd basis_tl :=
+  /-- `Multiseries`-part of `MultiseriesExpansion.mul`. -/
+  noncomputable def Multiseries.mul {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+      (X Y : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
     match X, Y with
     | nil, _ => .nil
     | _, nil => .nil
     | cons X_exp X_coef X_tl, cons Y_exp Y_coef Y_tl =>
-      cons (X_exp + Y_exp) (X_coef.mul Y_coef) ((SeqMS.mulMonomial X_tl Y_coef Y_exp).add Y_tl)
+      cons (X_exp + Y_exp) (X_coef.mul Y_coef) ((Multiseries.mulMonomial X_tl Y_coef Y_exp).add Y_tl)
 
-  /-- `SeqMS`-part of `PreMS.mulMonomial`. -/
-  noncomputable def SeqMS.mulMonomial {basis_hd} {basis_tl} (B : SeqMS basis_hd basis_tl)
-      (M_coef : PreMS basis_tl) (M_exp : ℝ) : SeqMS basis_hd basis_tl :=
+  /-- `Multiseries`-part of `MultiseriesExpansion.mulMonomial`. -/
+  noncomputable def Multiseries.mulMonomial {basis_hd} {basis_tl} (B : Multiseries basis_hd basis_tl)
+      (M_coef : MultiseriesExpansion basis_tl) (M_exp : ℝ) : Multiseries basis_hd basis_tl :=
     B.map (fun exp => exp + M_exp) (fun coef => coef.mul M_coef)
 
   /-- Multiplication for multiseries. -/
-  noncomputable def mul {basis : Basis} (X Y : PreMS basis) : PreMS basis :=
+  noncomputable def mul {basis : Basis} (X Y : MultiseriesExpansion basis) : MultiseriesExpansion basis :=
     match basis with
     | [] => ofReal (X.toReal * Y.toReal)
     | List.cons basis_hd basis_tl =>
-      mk (SeqMS.mul X.seq Y.seq) (X.toFun * Y.toFun)
+      mk (Multiseries.mul X.seq Y.seq) (X.toFun * Y.toFun)
 
   /-- Multiplication by monomial, i.e. `B * basis_hd ^ M_exp * M_coef`. -/
-  noncomputable def mulMonomial {basis_hd} {basis_tl} (B : PreMS (basis_hd :: basis_tl))
-      (M_coef : PreMS basis_tl) (M_exp : ℝ) : PreMS (basis_hd :: basis_tl) :=
-    mk (SeqMS.mulMonomial B.seq M_coef M_exp) (B.toFun * basis_hd ^ M_exp * M_coef.toFun)
+  noncomputable def mulMonomial {basis_hd} {basis_tl} (B : MultiseriesExpansion (basis_hd :: basis_tl))
+      (M_coef : MultiseriesExpansion basis_tl) (M_exp : ℝ) : MultiseriesExpansion (basis_hd :: basis_tl) :=
+    mk (Multiseries.mulMonomial B.seq M_coef M_exp) (B.toFun * basis_hd ^ M_exp * M_coef.toFun)
 
 end
 ```
 
-Again, we can't define `SeqMS.mul` directly using corecursion, we need to manually rewrite
-the definition using `SeqMS.gcorec` with `SeqMS.add` as the friend:
+Again, we can't define `Multiseries.mul` directly using corecursion, we need to manually rewrite
+the definition using `Multiseries.gcorec` with `Multiseries.add` as the friend:
 ```lean
-noncomputable def SeqMS.mul {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-    (X Y : SeqMS basis_hd basis_tl) : SeqMS basis_hd basis_tl :=
+noncomputable def Multiseries.mul {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+    (X Y : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
   match X.destruct with
   | none => .nil
   | some (X_exp, X_coef, X_tl) =>
-    let T := SeqMS basis_hd basis_tl
-    let g : T → Option (ℝ × PreMS basis_tl × SeqMS basis_hd basis_tl × T) := fun Y =>
+    let T := Multiseries basis_hd basis_tl
+    let g : T → Option (ℝ × MultiseriesExpansion basis_tl × Multiseries basis_hd basis_tl × T) := fun Y =>
       match Y.destruct with
       | none => none
       | some (Y_exp, Y_coef, Y_tl) =>
-        some (X_exp + Y_exp, X_coef.mul Y_coef, SeqMS.mulMonomial X_tl Y_coef Y_exp, Y_tl)
-    SeqMS.gcorec g SeqMS.add Y
+        some (X_exp + Y_exp, X_coef.mul Y_coef, Multiseries.mulMonomial X_tl Y_coef Y_exp, Y_tl)
+    Multiseries.gcorec g Multiseries.add Y
 ```
 
 As multiplication is defined by non-primitive corecursion with addition as the friend, we heavily
 rely on coinduction principles for `Sorted` and `Approximates` with addition in the tail in proofs.
 
 Then we prove
-1. "Structural" lemmas: `SeqMS.mul_cons_cons`, `SeqMS.mul_nil`, `SeqMS.mulMonomial_cons`, etc.
+1. "Structural" lemmas: `Multiseries.mul_cons_cons`, `Multiseries.mul_nil`, `Multiseries.mulMonomial_cons`, etc.
 2. Algebraic properties: distributivity and associativity
-3. `SeqMS.mul_Sorted`: multiplication preserves sortedness
-4. `PreMS.mul_Approximates`: `X.mul Y` approximates `X.toFun * Y.toFun`
-5. That `X.mul ·` is a friend operation for `SeqMS`. This allows us to define `SeqMS.powser`
+3. `Multiseries.mul_Sorted`: multiplication preserves sortedness
+4. `MultiseriesExpansion.mul_Approximates`: `X.mul Y` approximates `X.toFun * Y.toFun`
+5. That `X.mul ·` is a friend operation for `Multiseries`. This allows us to define `Multiseries.powser`
    using non-primitive corecursion.
 6. Coinduction principles for `Sorted` and `Approximates` with multiplication in the tail:
-  `SeqMS.Sorted.mul_coind` and `Approximates.mul_coind`
+  `Multiseries.Sorted.mul_coind` and `Approximates.mul_coind`
 
 ## `LazySeries` and `powser` operation
 
@@ -530,30 +530,30 @@ We provide the following API for `LazySeries`:
 
 Then we define `powser` operation:
 ```lean
-noncomputable def SeqMS.powser (s : LazySeries) {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-    (ms : SeqMS basis_hd basis_tl) : SeqMS basis_hd basis_tl :=
+noncomputable def Multiseries.powser (s : LazySeries) {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+    (ms : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
   match s with
   | nil => .nil
   | cons c cs =>
-    cons 0 (PreMS.const _ c) (ms.mul (SeqMS.powser cs ms))
+    cons 0 (MultiseriesExpansion.const _ c) (ms.mul (Multiseries.powser cs ms))
 
-noncomputable def PreMS.powser (s : LazySeries) {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-    (ms : PreMS (basis_hd :: basis_tl)) : PreMS (basis_hd :: basis_tl) :=
-  mk (SeqMS.powser s ms.seq) (s.toFun ∘ ms.toFun)
+noncomputable def MultiseriesExpansion.powser (s : LazySeries) {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+    (ms : MultiseriesExpansion (basis_hd :: basis_tl)) : MultiseriesExpansion (basis_hd :: basis_tl) :=
+  mk (Multiseries.powser s ms.seq) (s.toFun ∘ ms.toFun)
 ```
 
-Again, we can't define `SeqMS.powser` directly using corecursion, we need to manually rewrite
-the definition using `SeqMS.gcorec` with `SeqMS.mul` as the friend:
+Again, we can't define `Multiseries.powser` directly using corecursion, we need to manually rewrite
+the definition using `Multiseries.gcorec` with `Multiseries.mul` as the friend:
 ```lean
-noncomputable def SeqMS.powser (s : LazySeries) {basis_hd : ℝ → ℝ} {basis_tl : Basis}
-    (ms : SeqMS basis_hd basis_tl) : SeqMS basis_hd basis_tl :=
+noncomputable def Multiseries.powser (s : LazySeries) {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+    (ms : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
   let T := LazySeries
-  let g : T → Option (ℝ × PreMS basis_tl × SeqMS basis_hd basis_tl × T) := fun s =>
+  let g : T → Option (ℝ × MultiseriesExpansion basis_tl × Multiseries basis_hd basis_tl × T) := fun s =>
     match s.destruct with
     | none => none
     | some (c, cs) =>
-      some (0, PreMS.const _ c, ms, cs)
-  SeqMS.gcorec g SeqMS.mul s
+      some (0, MultiseriesExpansion.const _ c, ms, cs)
+  Multiseries.gcorec g Multiseries.mul s
 ```
 
 
@@ -564,7 +564,7 @@ For this operation to make sense, in some theorems we require `ms.leadingExp < 0
 that `ms.toFun` tends to 0 at `atTop`
 
 Then we prove
-1. "Structural" lemmas: `SeqMS.powser_nil`, `SeqMS.powser_cons`
+1. "Structural" lemmas: `Multiseries.powser_nil`, `Multiseries.powser_cons`
 2. `powser_Sorted`: when `ms.Sorted` and `ms.leadingExp < 0`, the result is Sorted
 3. `powser_Approximates`: when `s.Convergent`, and `ms.leadingExp < 0`,
    `powser s ms` approximates `s.toFun ∘ ms.toFun`
@@ -575,27 +575,27 @@ Inversion and powers with constant exponent are direct applications of `powser`.
 we define the corresponding series, `invSeries := [1, 1, 1, ...]` and
 `powSeries a := [1, a, a * (a - 1) / 2, a * (a - 1) * (a - 2) / 6, ...]`. Then we prove it converges
 and use a theorem from Mathlib to prove that its `toFun` is the desired function
-(`(1 - x)⁻¹` or `(1 + x) ^ a`). We define `PreMS.inv` as follows:
+(`(1 - x)⁻¹` or `(1 + x) ^ a`). We define `MultiseriesExpansion.inv` as follows:
 
 ```lean
 mutual
 
-noncomputable def SeqMS.inv {basis_hd basis_tl} (ms : SeqMS basis_hd basis_tl) :
-    SeqMS basis_hd basis_tl :=
+noncomputable def Multiseries.inv {basis_hd basis_tl} (ms : Multiseries basis_hd basis_tl) :
+    Multiseries basis_hd basis_tl :=
   match ms.destruct with
   | none => .nil
-  | some (exp, coef, tl) => SeqMS.mulMonomial
-    (SeqMS.powser invSeries (tl.neg.mulMonomial coef.inv (-exp))) coef.inv (-exp)
+  | some (exp, coef, tl) => Multiseries.mulMonomial
+    (Multiseries.powser invSeries (tl.neg.mulMonomial coef.inv (-exp))) coef.inv (-exp)
 
-noncomputable def inv {basis : Basis} (ms : PreMS basis) : PreMS basis :=
+noncomputable def inv {basis : Basis} (ms : MultiseriesExpansion basis) : MultiseriesExpansion basis :=
   match basis with
   | [] => ofReal <| ms.toReal⁻¹
   | List.cons _ _ =>
-    mk (SeqMS.inv ms.seq) ms.toFun⁻¹
+    mk (Multiseries.inv ms.seq) ms.toFun⁻¹
 
 end
 ```
-(and similar for `PreMS.pow`)
+(and similar for `MultiseriesExpansion.pow`)
 
 The idea here is to if `f = basis_hd ^ exp * coef.toFun + tl.toFun` where `tl.leadingExp < exp`, then
 `f⁻¹ = basis_hd ^ (-exp) * (coef.toFun)⁻¹ * (1 + basis_hd ^ (-exp) * (coef.toFun)⁻¹ * tl.toFun)⁻¹ = basis_hd ^ (-exp) * coef.inv.toFun * (1 - basis_hd ^ (-exp) * coef.inv.toFun * tl.neg.toFun)⁻¹`,
@@ -610,7 +610,7 @@ Using theorems about other operations, we prove that `inv` and `pow` respect sor
 As `Real.rpow` behaves well only for non-negative arguments, we require an additional precondition
 `ms.leadingTerm.coef > 0` in `pow_Approximates`.
 
-There are also versions `PreMS.npow` and `PreMS.zpow` for natural and integer exponents that don't
+There are also versions `MultiseriesExpansion.npow` and `MultiseriesExpansion.zpow` for natural and integer exponents that don't
 require this precondition.
 
 ## `LogBasis` structure
@@ -625,15 +625,15 @@ then `LogBasis` is a list of multiseries approximations of log b₁, ..., log b�
 
 During the algorithm we maintain a basis we work with.
 Sometimes we need to insert a new function into the basis. For this we use
-1. `PreMS.extendBasisEnd` lifts a multiseries from the basis `[b₁, b₂, ..., bₙ]` to the
+1. `MultiseriesExpansion.extendBasisEnd` lifts a multiseries from the basis `[b₁, b₂, ..., bₙ]` to the
   basis `[b₁, b₂, ..., bₙ, f]` with a new function `f`.
-2. `PreMS.extendBasisMiddle` does the same, but `f` is inserted somewhere except the last position.
+2. `MultiseriesExpansion.extendBasisMiddle` does the same, but `f` is inserted somewhere except the last position.
 3. `LogBasis.extendBasisEnd` and `LogBasis.extendBasisMiddle` do the same for `LogBasis`.
 4. Sometimes we have a multiseries in some basis `bs` and need to lift it to a larger basis `bs'`.
   For example this happens when we deal with binary operations: when we need to compute an
   expansion of `f + g`, we compute an expansion `F` of `f` in some basis `bs`, then an expansion
   `G` of `g` in some basis `bs'` (`bs <+ bs'`) and then we must lift `F` to `bs'`. This is done by
-  `PreMS.updateBasis` that takes a `BasisExtension` as an argument.
+  `MultiseriesExpansion.updateBasis` that takes a `BasisExtension` as an argument.
 
 `BasisExtension` is a structure that represents a change of basis.
 ```lean
@@ -646,7 +646,7 @@ inductive BasisExtension : Basis → Type
 So `ex : BasisExtension bs` contains data describing how to construct a basis `bs'` from `bs`.
 
 When we need to lift `F` to `bs'`, in the example above, we find (on the meta-level)
-the `BasisExtension` that converts `bs` to `bs'` and substitute it into `PreMS.updateBasis`.
+the `BasisExtension` that converts `bs` to `bs'` and substitute it into `MultiseriesExpansion.updateBasis`.
 
 ## Logarithm of a multiseries
 
@@ -656,19 +656,19 @@ are partially defined on the meta-level.
 We again use power series for the logarithm: `logSeries := [0, 1, -1/2, 1/3, ...]`
 (an expansion of `log (1 + x)`).
 
-Let's take a look at the `PreMS.log` definition:
+Let's take a look at the `MultiseriesExpansion.log` definition:
 ```lean
 mutual
 
-noncomputable def SeqMS.log {basis_hd basis_tl}
+noncomputable def Multiseries.log {basis_hd basis_tl}
     (logBasis : LogBasis (basis_hd :: basis_tl))
-    (ms : SeqMS basis_hd basis_tl) :
-    SeqMS basis_hd basis_tl :=
+    (ms : Multiseries basis_hd basis_tl) :
+    Multiseries basis_hd basis_tl :=
   match ms.destruct with
   | none => .nil
   | some (exp, coef, tl) =>
     match basis_tl with
-    | [] => (SeqMS.const _ _ (Real.log coef.toReal)) +
+    | [] => (Multiseries.const _ _ (Real.log coef.toReal)) +
         (tl.mulConst coef.toReal⁻¹).powser logSeries -- here exp = 0 by assumption
     | List.cons _ _ =>
       match logBasis with
@@ -678,11 +678,11 @@ noncomputable def SeqMS.log {basis_hd basis_tl}
 
 noncomputable def log {basis : Basis}
     (logBasis : LogBasis basis)
-    (ms : PreMS basis) :
-    PreMS basis :=
+    (ms : MultiseriesExpansion basis) :
+    MultiseriesExpansion basis :=
   match basis with
   | [] => Real.log ms
-  | List.cons basis_hd basis_tl => mk (SeqMS.log logBasis ms.seq) (Real.log ∘ ms.toFun)
+  | List.cons basis_hd basis_tl => mk (Multiseries.log logBasis ms.seq) (Real.log ∘ ms.toFun)
 
 end
 ```
@@ -696,7 +696,7 @@ This definition works when the last exponent of the leading term of `ms` is 0.
 
 On the meta-level, when asked to compute an expansion of `log f`, we compute an expansion `F` of `f`,
 trim it and then check if the last exponent of the leading term is 0. If it is, we can directly use
-`PreMS.log`, otherwise we push `log ∘ basis.getLast` into the basis before applying `PreMS.log`.
+`MultiseriesExpansion.log`, otherwise we push `log ∘ basis.getLast` into the basis before applying `MultiseriesExpansion.log`.
 
 ## Exponential of a multiseries
 
@@ -726,14 +726,14 @@ You can use a `have` statement to provide the sign of the expression."
 ## Normalization
 
 To extract the head of a multiseries we *normalize* it by simulating its lazy evaluation.
-This is done by `normalizePreMS`. It takes `ms : Q(PreMS basis)` and returns `ms'` that is normalized
+This is done by `normalizeMultiseriesExpansion`. It takes `ms : Q(MultiseriesExpansion basis)` and returns `ms'` that is normalized
 along with a proof of `ms' = ms`. First, it computes `ms.toFun` -- this is easily done recursively
-by applying theorems `PreMS.add_toFun`, etc. Then it computes `ms.seq` as
-a `Q(SeqMS basis_hd basis_tl)` by applying theorems `PreMS.add_seq`, etc. So it basically
-replaces all `PreMS` operations by `SeqMS` operations. Then it normalizes the result in
-`normalizeSeqMS`.
+by applying theorems `MultiseriesExpansion.add_toFun`, etc. Then it computes `ms.seq` as
+a `Q(Multiseries basis_hd basis_tl)` by applying theorems `MultiseriesExpansion.add_seq`, etc. So it basically
+replaces all `MultiseriesExpansion` operations by `Multiseries` operations. Then it normalizes the result in
+`normalizeMultiseries`.
 
-It simulates the lazy evaluation of multiseries. For example to normalize `SeqMS.add F G` it
+It simulates the lazy evaluation of multiseries. For example to normalize `Multiseries.add F G` it
 normalizes `F` and `G`, compares their leading exponents and decides which of the branches
 of `add_unfold` holds and applies the corresponding theorem, e.g. `cons_add_cons_right` for the case
 `F = (F_exp, F_coef) :: F_tl` and `G = (G_exp, G_coef) :: G_tl` and `F_exp < G_exp`.
@@ -751,7 +751,7 @@ then applies the `simp` and `field` tactics to the goal.
 
 ## Trimming
 
-We call an expression `ms : Q(PreMS basis)` *trimmed* if it satisfies `PreMS.Trimmed ms` and
+We call an expression `ms : Q(MultiseriesExpansion basis)` *trimmed* if it satisfies `MultiseriesExpansion.Trimmed ms` and
 `ms` is in the normal form on all levels, i.e. it's either `nil`, or `cons (exp, coef) tl` where
 `coef` is also `cons`, and so on. This allows to directly extract the leading term and determine
 the asymptotic of the function. Sometimes it's enough to partially trim a multiseries -- normalize
@@ -767,7 +767,7 @@ This process is implemented in `trimWithoutOracle`. We can't guarantee that it w
 so after a certain number of steps we stop and try to use the eventual zeroness oracle to prove that
 the attached function is eventually zero and return `nil`.
 
-This is why we need to explicitly store the function `PreMS` approximates.
+This is why we need to explicitly store the function `MultiseriesExpansion` approximates.
 
 ## Final algorithm
 
