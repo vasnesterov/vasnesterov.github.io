@@ -616,8 +616,8 @@ require this precondition.
 
 Operations we described above do not change the basis. Logarithm and exponential, however, do.
 
-Along with the basis, we store a `LogBasis`. If `basis = [b₁, b₂, ..., bₙ]`,
-then `LogBasis` is a list of multiseries approximations of log b₁, ..., log bₙ₋₁, where
+Along with the basis, we store a **log-basis**. If `basis = [b₁, b₂, ..., bₙ]`,
+then log-basis is a list of multiseries approximations of log b₁, ..., log bₙ₋₁, where
 `log bᵢ` is expanded in the basis `[bᵢ₊₁, ..., bₙ]`.
 
 ## Basis change
@@ -691,7 +691,7 @@ This definition works when the last exponent of the leading term of `ms` is 0.
   `log f = log (basis_hd ^ 0 * coef.toFun + tl.toFun) = Real.log coef.toReal + log (1 + coef.toReal⁻¹ * tl.toFun)`.
 2. If `basis_tl ≠ []`, then
   `log f = log coef.toFun + exp * log basis_hd + log (1 + basis_hd ^ (-exp) * coef.inv.toFun * tl.toFun)`.
-  The only difference is the second term, but since `basis_tl ≠ []`, we can extract an expansion of `log basis_hd` from `logBasis`.
+  The only difference is the second term, but since `basis_tl ≠ []`, we can extract an expansion of `log basis_hd` from log-basis.
 
 On the meta-level, when asked to compute an expansion of `log f`, we compute an expansion `F` of `f`,
 trim it and then check if the last exponent of the leading term is 0. If it is, we can directly use
@@ -699,7 +699,55 @@ trim it and then check if the last exponent of the leading term is 0. If it is, 
 
 ## Exponential of a multiseries
 
-TODO
+Suppose we have an expansion `F` of a function `f` and need to compute an expansion for `exp ∘ f`.
+The case `F = []` is trivial, let's focus on the case `F = (exp, coef) :: tl`.
+We inspect the leading term of `F`. There are two possibilities.
+
+### `¬ FirstIsPos F.exps`
+This case can be handled completely inside the theory.
+
+As above, we use a power series, now for `exp`: `expSeries := [1, 1/2, 1/6, 1/24, ...]`.
+
+Then we can define
+```lean
+mutual
+
+noncomputable def Multiseries.exp {basis_hd : ℝ → ℝ} {basis_tl : Basis}
+    (ms : Multiseries basis_hd basis_tl) : Multiseries basis_hd basis_tl :=
+  match ms.destruct with
+  | .none => Multiseries.one
+  | .some (exp, coef, tl) =>
+    if exp < 0 then
+      ms.powser expSeries
+    else -- we assume that exp = 0
+      (tl.powser expSeries).mulMonomial coef.exp 0
+
+noncomputable def exp {basis : Basis} (ms : MultiseriesExpansion basis) :
+    MultiseriesExpansion basis :=
+  match basis with
+  | [] => ofReal <| Real.exp ms.toReal
+  | List.cons _ _ =>
+    mk (Multiseries.exp ms.seq) (Real.exp ∘ ms.toFun)
+
+end
+```
+
+The idea is that if `exp < 0` then `f` tends to zero and we may use `powser` with `expSeries`, and if `exp = 0` then `exp (f x) = exp (coef.toFun x + tl.toFun x) = exp (coef.toFun x) + exp (tl.toFun x)`. The first term is handled by recursion on `basis`, and the second one by the previous
+construction, because `tl.leadingExp < F.leadingExp = 0`.
+
+### `FirstIsPos F.exps`
+
+This case is more complicated and might require basis change. We proceed as follows:
+1. Go through the log-basis and compare (asymptotically) its elements with `F`. There are two possibilities: either `F ~ c • logBasis[i]` for some `c : ℝ` and `i`, or `F` can be inserted into
+the log-basis at some position, i.e. we can split `logBasis = left ++ right` so that all elements of `right` are little-o of `F` and `F` is little-o of all elements of `left`.
+2. If `F ~ c • logBasis[i]`, then 
+```
+exp (f x) = exp (c * logBasis[i] x) * exp (f - c • logBasis[i]) = (basis[i] x) ^ c * exp (f - c • logBasis[i])
+```
+and we recursively handle `exp (f - c • logBasis[i])` which is asymptotically strictly smaller (little-o) than `f`.
+3. Otherwise, we update our basis. Let's denote by `i` the position of the first non-zero (and thus positive) exponent in `F.exps` and by `j` the length of `left`. The last element of `left` approximates `log ∘ basis[j]` in the basis `basis[j + 1:]`, so if we lift `left[j-1]` to the basis
+`basis` it would have at least the first `j` exponents equal to zero. Therefore, `F = o(left[j-1])` implies `i > j`, i.e. the first `j` exponents of `F` are zero.
+4. We extract `G` -- a "coefficient at depth `j`" of `F`. `G` is a multiseries in the basis `basis[j + 1:]` and `F ~ G` as functions. Assume `G` tends to `+∞`, the case of `-∞` is similar. We insert `G` into the log-basis between `left` and `right`, and `exp ∘ G` into the basis at the corresponding position. It's easy to see that all basis and log-basis invariants are preserved. Then we can return to step 2 as `F ~ G = newLogBasis[j]`. 
 
 # Meta-level
 
@@ -779,9 +827,23 @@ To conclude, to compute the limit of a function `f` at `atTop`, we
 
 # Miscellaneous
 
-## Different filters
+## Different asymptotic goals
 
-TODO
+Different "asymptotic goals" can be reduced to computing limits.
+
+Different source filters are handled by a change of variable, for example
+```lean
+theorem tendsto_nhdsGT_of_tendsto_atTop (h : Tendsto (fun x ↦ f (c + x⁻¹)) atTop l) :
+    Tendsto f (𝓝[>] c) l
+```
+is used to reduce the goal of the form `Tendsto f (𝓝[>] c) l` to the form `Tendsto f atTop l`.
+
+Goals involving O-notation are handled similarly. For example for `IsBigO` we use
+```lean
+theorem isBigO_of_div_tendsto_atTop {f g : ℝ → ℝ} {l : Filter ℝ}
+    (h : Tendsto (fun x ↦ g x / f x) l atTop) :
+    f =O[l] g
+```
 
 ## Different domains and codomains
 
