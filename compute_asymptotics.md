@@ -572,10 +572,10 @@ Then we prove
 ## Inversion and powers with constant exponent
 
 Inversion and powers with constant exponent are direct applications of `powser`. For both operations,
-we define the corresponding series, `invSeries := [1, 1, 1, ...]` and
+we define the corresponding series, `invSeries := [1, -1, 1, -1, ...]` and
 `powSeries a := [1, a, a * (a - 1) / 2, a * (a - 1) * (a - 2) / 6, ...]`. Then we prove it converges
 and use a theorem from Mathlib to prove that its `toFun` is the desired function
-(`(1 - x)⁻¹` or `(1 + x) ^ a`). We define `MultiseriesExpansion.inv` as follows:
+(`(1 + x)⁻¹` or `(1 + x) ^ a`). We define `MultiseriesExpansion.inv` as follows:
 
 ```lean
 mutual
@@ -585,7 +585,7 @@ noncomputable def Multiseries.inv {basis_hd basis_tl} (ms : Multiseries basis_hd
   match ms.destruct with
   | none => .nil
   | some (exp, coef, tl) => Multiseries.mulMonomial
-    (Multiseries.powser invSeries (tl.neg.mulMonomial coef.inv (-exp))) coef.inv (-exp)
+    (Multiseries.powser invSeries (tl.mulMonomial coef.inv (-exp))) coef.inv (-exp)
 
 noncomputable def inv {basis : Basis} (ms : MultiseriesExpansion basis) : MultiseriesExpansion basis :=
   match basis with
@@ -600,7 +600,6 @@ end
 The idea here is to if `f = basis_hd ^ exp * coef.toFun + tl.toFun` where `tl.leadingExp < exp`, then
 `f⁻¹ = basis_hd ^ (-exp) * (coef.toFun)⁻¹ * (1 + basis_hd ^ (-exp) * (coef.toFun)⁻¹ * tl.toFun)⁻¹ = basis_hd ^ (-exp) * coef.inv.toFun * (1 - basis_hd ^ (-exp) * coef.inv.toFun * tl.neg.toFun)⁻¹`,
 and the leading exponent of `basis_hd ^ (-exp) * coef.inv.toFun * tl.neg.toFun` is negative, so we can use `powser` for the last term.
-(We use (1 - x)⁻¹ instead of (1 + x)⁻¹ just because there is no theorem for (1 + x)⁻¹ in Mathlib.)
 
 For this to make sense, we need `coef.toFun` to be non-zero. So before applying `inv` (or `pow`) we
 trim the multiseries.
