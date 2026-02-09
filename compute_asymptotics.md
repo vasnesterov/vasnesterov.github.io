@@ -838,7 +838,7 @@ theorem tendsto_nhdsGT_of_tendsto_atTop (h : Tendsto (fun x ↦ f (c + x⁻¹)) 
 ```
 is used to reduce the goal of the form `Tendsto f (𝓝[>] c) l` to the form `Tendsto f atTop l`.
 
-Goals involving O-notation are handled similarly. For example for `IsBigO` we use
+Goals involving Landau notation are handled similarly. For example for `IsBigO` we use
 ```lean
 theorem isBigO_of_div_tendsto_atTop {f g : ℝ → ℝ} {l : Filter ℝ}
     (h : Tendsto (fun x ↦ g x / f x) l atTop) :
