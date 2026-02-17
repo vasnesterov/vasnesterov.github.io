@@ -173,15 +173,15 @@ theorem Sorted.coind {s : Multiseries basis_hd basis_tl}
 ```
 which we later use to prove that operations respect sortedness.
 
-## Majorated predicate
+## `Majorized` predicate
 
 To define `Approximates` predicate we need to introduce an auxiliary predicate.
-`Majorated f g exp` for functions `f, g : ℝ → ℝ` and `exp : ℝ` means: for every
+`Majorized f g exp` for functions `f, g : ℝ → ℝ` and `exp : ℝ` means: for every
 `exp' > exp`, `f =o[atTop] g ^ exp'`. So `f` is dominated by any power of `g` with
 exponent greater than `exp`. Intuitively, this means that the right order of `f` in terms of
 `g` is at most `g ^ exp`.
 
-See `Approximates` for details on how `Majorated` is used.
+See `Approximates` for details on how `Majorized` is used.
 
 ## `Approximates` predicate
 
@@ -195,7 +195,7 @@ coinductive Approximates {basis : Basis} (ms : MultiseriesExpansion basis) : Pro
   Approximates (mk (@nil basis_hd basis_tl) f)
 | cons {basis_hd : ℝ → ℝ} {basis_tl : Basis} {exp : ℝ} {coef : MultiseriesExpansion basis_tl}
     {tl : Multiseries basis_hd basis_tl}
-    (h_coef : coef.Approximates) (h_maj : Majorated f basis_hd exp)
+    (h_coef : coef.Approximates) (h_maj : Majorized f basis_hd exp)
     (h_tl : (mk tl (f - basis_hd ^ exp * coef.toFun)).Approximates) :
   Approximates (mk (.cons exp coef tl) f)
 ```
@@ -208,7 +208,7 @@ Let's break this definition down:
 2. A nil multiseries approximates a function if it eventually equals zero.
 3. `(exp, coef) :: tl` approximates a function `f` if
   `coef` approximates its attached function,
-  `f` is majorated by `basis_hd ^ exp`,
+  `f` is majorized by `basis_hd ^ exp`,
   and the tail `tl` approximates `f - basis_hd ^ exp * coef.toFun` -- the remainder function.
 
 ## Well-formedness of basis
@@ -442,7 +442,7 @@ We then prove
         motive ms →
         ms.seq = .nil ∧ ms.toFun =ᶠ[atTop] 0 ∨
         ∃ exp coef tl,
-          ms.seq = .cons exp coef tl ∧ coef.Approximates ∧ majorated ms.toFun basis_hd exp ∧
+          ms.seq = .cons exp coef tl ∧ coef.Approximates ∧ majorized ms.toFun basis_hd exp ∧
           ∃ (A : MultiseriesExpansion (basis_hd :: basis_tl)) (B : Multiseries basis_hd basis_tl),
           tl = A.seq + B ∧ A.Approximates ∧
           motive (mk (basis_hd := basis_hd) B (ms.toFun - basis_hd ^ exp * coef.toFun - A.toFun))) :
