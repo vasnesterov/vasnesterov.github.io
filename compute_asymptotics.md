@@ -189,7 +189,7 @@ Let's define what it means for a multiseries to approximate a function.
 
 A "true" definition of `Approximates` would be as a coinductive predicate:
 ```lean
-coinductive Approximates {basis : Basis} (ms : MultiseriesExpansion basis) : Prop
+coinductive Approximates : {basis : Basis} → (ms : MultiseriesExpansion basis) → Prop
 | const (ms : MultiseriesExpansion []) : Approximates ms
 | nil {basis_hd : ℝ → ℝ} {basis_tl : Basis} (f : ℝ → ℝ) (hf : f =ᶠ[atTop] 0) :
   Approximates (mk (@nil basis_hd basis_tl) f)
